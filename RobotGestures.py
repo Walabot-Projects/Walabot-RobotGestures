@@ -5,8 +5,12 @@ from math import radians, sin, pi
 import paramiko
 
 class Walabot:
+    """ Designed to control the Walabot device.
+    """
 
     def __init__(self):
+        """ Set useful arena constants and load the Walabot SDK.
+        """
         wlbtPath = join('/usr', 'share', 'walabot', 'python')
         self.wlbt = load_source('WalabotAPI', join(wlbtPath, 'WalabotAPI.py'))
         self.wlbt.Init()
@@ -21,6 +25,9 @@ class Walabot:
         self.distance = lambda t: (t.xPosCm**2+t.yPosCm**2+t.zPosCm**2) ** 0.5
 
     def verifyThatConnected(self):
+        """ Connect to a Walabot device. Prompt the user to connect one if
+            it can't detect it.
+        """
         while True:
             try:
                 self.wlbt.ConnectAny()
@@ -32,6 +39,9 @@ class Walabot:
                 return
 
     def setParametersAndStart(self):
+        """ Set the Walabot required parameters according to the constants.
+            Then start the Walabot.
+        """
         self.wlbt.SetProfile(self.wlbt.PROF_SENSOR)
         self.wlbt.SetArenaR(self.R_MIN, self.R_MAX, self.R_RES)
         self.wlbt.SetArenaTheta(self.THETA_MIN, self.THETA_MAX, self.THETA_RES)
@@ -42,6 +52,10 @@ class Walabot:
         print('- Walabot started.')
 
     def getClosestTarget(self):
+        """ Trigger the Walabot and retrieve SensorTargets. Return the closest.
+            Return:
+                targets     Of SensorTarget type (from WalabotAPI).
+        """
         self.wlbt.Trigger()
         targets = self.wlbt.GetSensorTargets()
         try:
@@ -50,18 +64,26 @@ class Walabot:
             return None
 
     def stopAndDisconnect(self):
+        """ Stop and disconnect from the Walabot device.
+        """
         self.wlbt.Stop()
         self.wlbt.Disconnect()
         print('- Walabot stopped and disconnected.')
 
 class RaspberryPi:
+    """ Designed to control the Raspberry Pi.
+    """
 
     def __init__(self):
+        """ Set Raspberry Pi network information.
+        """
         self.HOST = '192.168.1.39'
         self.USER = 'pi'
         self.PSWRD = 'raspberry'
 
     def connect(self):
+        """ Connect to the Raspberry Pi over SHH using paramiko.
+        """
         self.ssh = paramiko.SSHClient()
         self.ssh.load_system_host_keys()
         self.ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
@@ -69,16 +91,30 @@ class RaspberryPi:
         print('- Connection to RaspPi established.')
 
     def drive(self, speed):
+        """ Send a command to the Raspberry Pi to drive the robot straight at
+            a given speed.
+            Arguments:
+                speed       A number between -MAX_SPEED to MAX_SPEED.
+        """
         command = 'sudo python -c "from pololu_drv8835_rpi import motors;'
         command += 'motors.setSpeeds({:.0f}, {:.0f})"'.format(speed, speed)
         self.ssh.exec_command(command)
 
     def rotate(self, speed):
+        """ Send a command to the Raspberry Pi to rotate the robot at a given
+            speed. Direction of rotation is according to the speed sign.
+            Basically, the right motor get the opposite speed that the left
+            motor get.
+            Arguments:
+                speed       A number between -MAX_SPEED to MAX_SPEED.
+        """
         command = 'sudo python -c "from pololu_drv8835_rpi import motors;'
         command += 'motors.setSpeeds({:.0f}, {:.0f})"'.format(-speed, speed)
         self.ssh.exec_command(command)
 
     def stop(self):
+        """ Send a command to the Raspberry Pi to set the robot speed to 0.
+        """
         command = 'sudo python -c "from pololu_drv8835_rpi import motors;'
         command += 'motors.setSpeeds(0, 0)"'
         self.ssh.exec_command(command)
@@ -89,13 +125,22 @@ raspPi  = RaspberryPi()
 MAX_SPEED = 480 # according to Pololu DRV883 documentation
 
 def moveRobotAccordingToTarget(target):
+    """ Moves the robot according to the target location in the arena by a
+        certain logic.
+        If a target is at the sides of the Walabot's arena, the robot will
+        rotate (proportionally to the target y-axis component).
+        The middle area of the Walabot's arena is the 'drive section'. The
+        speed that is given to the robot is proportional to the location of
+        the target in the z-axis (closer to the Walabot - greater speed).
+        If no target is found in the arena, the robot will stop.
+    """
     if not target:
         raspPi.stop()
     elif abs(target.yPosCm) > wlbt.ROTATE_RANGE: # hand is at 'rotate section'
         raspPi.rotate(rotationSpeed(target.yPosCm))
     elif target.zPosCm < wlbt.DRIVE_RANGE: # hand is at 'drive section'
         raspPi.drive(drivingSpeed(target.zPosCm))
-    else: # target is in the middle of arena
+    else: # target is in the bottom-middle of arena
         raspPi.stop()
 
 def drivingSpeed(z):
@@ -106,13 +151,13 @@ def rotationSpeed(y):
     return numerator / (wlbt.Y_MAX - wlbt.ROTATE_RANGE) * MAX_SPEED
 
 def robotGestures():
-    wlbt.verifyThatConnected()
-    wlbt.setParametersAndStart()
-    raspPi.connect()
+    wlbt.verifyThatConnected() # init the Walabot
+    wlbt.setParametersAndStart() # init the Raspberry Pi
+    raspPi.connect() # connect over SSH
     try:
         while True:
             moveRobotAccordingToTarget(wlbt.getClosestTarget())
-    finally:
+    finally: # make sure to stop the robot on any case.
         raspPi.stop()
         wlbt.stopAndDisconnect()
 
