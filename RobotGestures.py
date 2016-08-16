@@ -1,7 +1,6 @@
 from __future__ import print_function, division
 from imp import load_source
 from os.path import join
-from os import system
 from math import radians, sin, pi
 import paramiko
 
@@ -17,6 +16,8 @@ class Walabot:
         self.PHI_MIN, self.PHI_MAX, self.PHI_RES = -30, 30, 1
         self.TSHLD = 40
         self.Y_MAX = self.R_MAX * sin(radians(self.PHI_MAX))
+        self.ROTATE_RANGE = self.Y_MAX / 2
+        self.DRIVE_RANGE = self.R_MAX * 7 / 8
         self.distance = lambda t: (t.xPosCm**2+t.yPosCm**2+t.zPosCm**2) ** 0.5
 
     def verifyThatConnected(self):
@@ -87,25 +88,22 @@ raspPi  = RaspberryPi()
 
 MAX_SPEED = 480 # according to Pololu DRV883 documentation
 
-ROTATE_RANGE = wlbt.Y_MAX / 2
-DRIVE_RANGE = wlbt.R_MAX * 7 / 8
-
 def moveRobotAccordingToTarget(target):
     if not target:
         raspPi.stop()
-    elif abs(target.yPosCm) > ROTATE_RANGE: # hand is at 'rotate section'
+    elif abs(target.yPosCm) > wlbt.ROTATE_RANGE: # hand is at 'rotate section'
         raspPi.rotate(rotationSpeed(target.yPosCm))
-    elif target.zPosCm < DRIVE_RANGE: # hand is at 'drive section'
+    elif target.zPosCm < wlbt.DRIVE_RANGE: # hand is at 'drive section'
         raspPi.drive(drivingSpeed(target.zPosCm))
     else: # target is in the middle of arena
         raspPi.stop()
 
 def drivingSpeed(z):
-    return (1 - z / DRIVE_RANGE) * MAX_SPEED * 2
+    return (1 - z / wlbt.DRIVE_RANGE) * MAX_SPEED * 2
 
 def rotationSpeed(y):
-    numerator = y - ROTATE_RANGE if y > 0 else y + ROTATE_RANGE
-    return numerator / (wlbt.Y_MAX - ROTATE_RANGE) * MAX_SPEED
+    numerator = y - wlbt.ROTATE_RANGE if y > 0 else y + wlbt.ROTATE_RANGE
+    return numerator / (wlbt.Y_MAX - wlbt.ROTATE_RANGE) * MAX_SPEED
 
 def robotGestures():
     wlbt.verifyThatConnected()
