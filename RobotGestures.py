@@ -5,19 +5,53 @@ from os import system
 from math import radians, sin, radians
 import paramiko
 
-MAX_SPEED = 480 # according to Pololu DRV883 documentation
-distance = lambda t: (t.xPosCm**2 + t.yPosCm**2 + t.zPosCm**2) ** 0.5
+class Walabot:
 
-R_MIN, R_MAX, R_RES = 5, 40, 1
-THETA_MIN, THETA_MAX, THETA_RES = -10, 10, 10
-PHI_MIN, PHI_MAX, PHI_RES = -30, 30, 1
-TSHLD = 40
+    def __init__(self):
+        wlbtPath = join('/usr', 'share', 'walabot', 'python')
+        self.wlbt = load_source('WalabotAPI', join(wlbtPath, 'WalabotAPI.py'))
+        self.wlbt.Init()
+        self.wlbt.SetSettingsFolder()
+        self.R_MIN, self.R_MAX, self.R_RES = 5, 40, 1
+        self.THETA_MIN, self.THETA_MAX, self.THETA_RES = -10, 10, 10
+        self.PHI_MIN, self.PHI_MAX, self.PHI_RES = -30, 30, 1
+        self.TSHLD = 40
+        self.Y_MAX = self.R_MAX * sin(radians(self.PHI_MAX))
+        self.distance = lambda t: (t.xPosCm**2+t.yPosCm**2+t.zPosCm**2) ** 0.5
 
-Y_MAX = R_MAX * sin(radians(PHI_MAX))
-ROTATE_RANGE = Y_MAX / 2
-DRIVE_RANGE = R_MAX * 7 / 8
+    def verifyThatConnected(self):
+        while True:
+            try:
+                self.wlbt.ConnectAny()
+            except self.wlbt.WalabotError as err:
+                if err.code == 19: # 'WALABOT_INSTRUMENT_NOT_FOUND'
+                    input("- Connect Walabot and press 'Enter'.")
+            else:
+                print('- Connection to Walabot established.')
+                return
 
-class RaspberryPi():
+    def setParametersAndStart(self):
+        self.wlbt.SetProfile(self.wlbt.PROF_SENSOR)
+        self.wlbt.SetArenaR(self.R_MIN, self.R_MAX, self.R_RES)
+        self.wlbt.SetArenaTheta(self.THETA_MIN, self.THETA_MAX, self.THETA_RES)
+        self.wlbt.SetArenaPhi(self.PHI_MIN, self.PHI_MAX, self.PHI_RES)
+        self.wlbt.SetThreshold(self.TSHLD)
+        self.wlbt.SetDynamicImageFilter(self.wlbt.FILTER_TYPE_MTI)
+        self.wlbt.Start()
+
+    def getClosestTarget(self):
+        self.wlbt.Trigger()
+        targets = self.wlbt.GetSensorTargets()
+        try:
+            return max(targets, key=self.distance)
+        except ValueError: # 'targets' is empty; no targets were found
+            return None
+
+    def stopAndDisconnect(self):
+        self.wlbt.Stop()
+        self.wlbt.Disconnect()
+
+class RaspberryPi:
 
     def __init__(self):
         self.HOST = '192.168.1.39'
@@ -40,49 +74,24 @@ class RaspberryPi():
         command += 'motors.setSpeeds('+speed+', '+(-speed)+')"'
         self.ssh.exec_command(command)
 
+    def stop(self):
+        command = 'sudo python -c "from pololu_drv8835_rpi import motors;'
+        command += 'motors.setSpeeds(0, 0)"'
+        self.ssh.exec_command(command)
+
+wlbt = Walabot()
 raspPi  = RaspberryPi()
 
-def initWalabotLibrary():
-    wlbtPath = join('/usr', 'share', 'walabot', 'python')
-    wlbt = load_source('WalabotAPI', join(wlbtPath, 'WalabotAPI.py'))
-    wlbt.Init()
-    wlbt.SetSettingsFolder()
-    return wlbt
-wlbt = initWalabotLibrary()
+MAX_SPEED = 480 # according to Pololu DRV883 documentation
 
-def verifyWalabotIsConnected():
-    while True:
-        try:
-            wlbt.ConnectAny()
-        except wlbt.WalabotError as err:
-            if err.code == 19: # 'WALABOT_INSTRUMENT_NOT_FOUND'
-                input("- Connect Walabot and press 'Enter'.")
-        else:
-            print('- Connection to Walabot established.')
-            return
-
-def setParametersAndStart():
-    wlbt.SetProfile(wlbt.PROF_SENSOR)
-    wlbt.SetArenaR(R_MIN, R_MAX, R_RES)
-    wlbt.SetArenaTheta(THETA_MIN, THETA_MAX, THETA_RES)
-    wlbt.SetArenaPhi(PHI_MIN, PHI_MAX, PHI_RES)
-    wlbt.SetThreshold(TSHLD)
-    wlbt.SetDynamicImageFilter(wlbt.FILTER_TYPE_MTI)
-    wlbt.Start()
-
-def getClosestTarget():
-    wlbt.Trigger()
-    targets = wlbt.GetSensorTargets()
-    try:
-        return max(targets, key=distance)
-    except ValueError: # 'targets' is empty; no targets were found
-        return None
+ROTATE_RANGE = wlbt.Y_MAX / 2
+DRIVE_RANGE = wlbt.R_MAX * 7 / 8
 
 def moveRobotAccordingToTarget(target):
     system('clear')
     if not target:
         print('Stop')
-        #motors.stop()
+        raspPi.stop()
     elif abs(target.yPosCm) > ROTATE_RANGE: # hand is at 'rotate section'
         print('Rotate')
         print(rotationSpeed(target.yPosCm))
@@ -91,29 +100,25 @@ def moveRobotAccordingToTarget(target):
         print(drivingSpeed(target.zPosCm))
     else: # target is in the middle of arena
         print('Stop')
-        #motors.stop()
+        raspPi.stop()
 
 def drivingSpeed(z):
     return (1 - z / DRIVE_RANGE) * MAX_SPEED * 2
 
 def rotationSpeed(y):
     numerator = y - ROTATE_RANGE if y > 0 else y + ROTATE_RANGE
-    return numerator / (Y_MAX - ROTATE_RANGE) * 90
-
-def stopRobotAndDisconnectWalabot():
-    #motors.stop()
-    wlbt.Stop()
-    wlbt.Disconnect()
+    return numerator / (wlbt.Y_MAX - ROTATE_RANGE) * 90
 
 def robotGestures():
-    verifyWalabotIsConnected()
-    setParametersAndStart()
+    wlbt.verifyThatConnected()
+    wlbt.setParametersAndStart()
     raspPi.connect()
     try:
         while True:
-            moveRobotAccordingToTarget(getClosestTarget())
+            moveRobotAccordingToTarget(wlbt.getClosestTarget())
     finally:
-        stopRobotAndDisconnectWalabot()
+        raspPi.stop()
+        wlbt.stopAndDisconnect()
 
 if __name__ == '__main__':
     robotGestures()
