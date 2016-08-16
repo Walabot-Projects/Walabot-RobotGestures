@@ -1,22 +1,38 @@
 from __future__ import print_function, division
-from pololu_drv8835_rpi import motors, MAX_SPEED
 from imp import load_source
+from os.path import join
+from math import radians, sin, radians
+import paramiko
 
-R_MIN, R_MAX, R_RES = 5, 30, 10
+HOST = '192.168.1.39'
+USERNAME = 'pi'
+PASSWORD = 'raspberry'
+
+MAX_SPEED = 480 # according to Pololu DRV883 documentation
+distance = lambda t: (t.xPosCm**2 + t.yPosCm**2 + t.zPosCm**2) ** 0.5
+
+R_MIN, R_MAX, R_RES = 5, 40, 1
 THETA_MIN, THETA_MAX, THETA_RES = -10, 10, 10
-PHI_MIN, PHI_MAX, PHI_RES = -60, 60, 10
-TSHLD = 60
+PHI_MIN, PHI_MAX, PHI_RES = -30, 30, 1
+TSHLD = 40
 
-distance = lambda t: sqrt(t.xPosCm**2 + t.yPosCm**2 + t.zPosCm**2)
-motors.drive = lambda speed: motors.setSpeeds(speed, speed)
-motors.rotate = lambda speed: motors.setSpeeds(speed, -speed)
-motors.stop = lambda: motors.setSpeeds(0, 0)
+Y_MAX = R_MAX * sin(radians(PHI_MAX))
+ROTATE_RANGE = Y_MAX / 2
+DRIVE_RANGE = R_MAX * 7 / 8
+
+def connectToRaspPi():
+    ssh.load_system_host_keys()
+    ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
+    ssh.connect(HOST, username=USERNAME, password=PASSWORD)
+    return ssh
+raspPi = connectToRaspPi()
 
 def initWalabotLibrary():
     wlbtPath = join('/usr', 'share', 'walabot', 'python')
     wlbt = load_source('WalabotAPI', join(wlbtPath, 'WalabotAPI.py'))
     wlbt.Init()
     wlbt.SetSettingsFolder()
+    return wlbt
 wlbt = initWalabotLibrary()
 
 def verifyWalabotIsConnected():
@@ -47,30 +63,30 @@ def getClosestTarget():
     except ValueError: # 'targets' is empty; no targets were found
         return None
 
-def moveRobotAccordingToHand(target):
+def moveRobotAccordingToTarget(target):
+    system('clear')
     if not target:
-        motors.stop()
-    elif handIsAtDriveArena(target):
-        motors.drive(calculateDrivingSpeed(target.zPosCm))
-    elif handIsAtRotateArena(target):
-        motors.rotate(calculateRotationSpeed(target.yPosCm))
+        print('Stop')
+        #motors.stop()
+    elif abs(target.yPosCm) > ROTATE_RANGE: # hand is at 'rotate section'
+        print('Rotate')
+        print(rotationSpeed(target.yPosCm))
+    elif target.zPosCm < DRIVE_RANGE: # hand is at 'drive section'
+        print('Drive')
+        print(drivingSpeed(target.zPosCm))
     else: # target is in the middle of arena
-        motors.stop()
+        print('Stop')
+        #motors.stop()
 
-def handIsAtDriveArena(z):
-    pass # TODO: implement it!
+def drivingSpeed(z):
+    return (1 - z / DRIVE_RANGE) * MAX_SPEED * 2
 
-def handIsAtRotateArena(y):
-    pass # TODO: implement it!
-
-def calculateDrivingSpeed(z):
-    pass # TODO: implement it!
-
-def calculateRotationSpeed(y):
-    pass # TODO: implement it!
+def rotationSpeed(y):
+    numerator = y - ROTATE_RANGE if y > 0 else y + ROTATE_RANGE
+    return numerator / (Y_MAX - ROTATE_RANGE) * 90
 
 def stopRobotAndDisconnectWalabot():
-    motors.stop()
+    #motors.stop()
     wlbt.Stop()
     wlbt.Disconnect()
 
@@ -79,7 +95,7 @@ def robotGestures():
     setParametersAndStart()
     try:
         while True:
-            moveRobotAccordingToHand(getClosestTarget())
+            moveRobotAccordingToTarget(getClosestTarget())
     finally:
         stopRobotAndDisconnectWalabot()
 
