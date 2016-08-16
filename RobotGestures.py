@@ -2,7 +2,7 @@ from __future__ import print_function, division
 from imp import load_source
 from os.path import join
 from os import system
-from math import radians, sin, radians
+from math import radians, sin, pi
 import paramiko
 
 class Walabot:
@@ -13,7 +13,7 @@ class Walabot:
         self.wlbt.Init()
         self.wlbt.SetSettingsFolder()
         self.R_MIN, self.R_MAX, self.R_RES = 5, 40, 1
-        self.THETA_MIN, self.THETA_MAX, self.THETA_RES = -10, 10, 10
+        self.THETA_MIN, self.THETA_MAX, self.THETA_RES = -20, 20, 10
         self.PHI_MIN, self.PHI_MAX, self.PHI_RES = -30, 30, 1
         self.TSHLD = 40
         self.Y_MAX = self.R_MAX * sin(radians(self.PHI_MAX))
@@ -38,6 +38,7 @@ class Walabot:
         self.wlbt.SetThreshold(self.TSHLD)
         self.wlbt.SetDynamicImageFilter(self.wlbt.FILTER_TYPE_MTI)
         self.wlbt.Start()
+        print('- Walabot started.')
 
     def getClosestTarget(self):
         self.wlbt.Trigger()
@@ -50,6 +51,7 @@ class Walabot:
     def stopAndDisconnect(self):
         self.wlbt.Stop()
         self.wlbt.Disconnect()
+        print('- Walabot stopped and disconnected.')
 
 class RaspberryPi:
 
@@ -63,15 +65,16 @@ class RaspberryPi:
         self.ssh.load_system_host_keys()
         self.ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
         self.ssh.connect(self.HOST, username=self.USER, password=self.PSWRD)
+        print('- Connection to RaspPi established.')
 
     def drive(self, speed):
         command = 'sudo python -c "from pololu_drv8835_rpi import motors;'
-        command += 'motors.setSpeeds('+speed+', '+speed+')"'
+        command += 'motors.setSpeeds({:.0f}, {:.0f})"'.format(speed, speed)
         self.ssh.exec_command(command)
 
     def rotate(self, speed):
         command = 'sudo python -c "from pololu_drv8835_rpi import motors;'
-        command += 'motors.setSpeeds('+speed+', '+(-speed)+')"'
+        command += 'motors.setSpeeds({:.0f}, {:.0f})"'.format(-speed, speed)
         self.ssh.exec_command(command)
 
     def stop(self):
@@ -88,18 +91,13 @@ ROTATE_RANGE = wlbt.Y_MAX / 2
 DRIVE_RANGE = wlbt.R_MAX * 7 / 8
 
 def moveRobotAccordingToTarget(target):
-    system('clear')
     if not target:
-        print('Stop')
         raspPi.stop()
     elif abs(target.yPosCm) > ROTATE_RANGE: # hand is at 'rotate section'
-        print('Rotate')
-        print(rotationSpeed(target.yPosCm))
+        raspPi.rotate(rotationSpeed(target.yPosCm))
     elif target.zPosCm < DRIVE_RANGE: # hand is at 'drive section'
-        print('Drive')
-        print(drivingSpeed(target.zPosCm))
+        raspPi.drive(drivingSpeed(target.zPosCm))
     else: # target is in the middle of arena
-        print('Stop')
         raspPi.stop()
 
 def drivingSpeed(z):
@@ -107,7 +105,7 @@ def drivingSpeed(z):
 
 def rotationSpeed(y):
     numerator = y - ROTATE_RANGE if y > 0 else y + ROTATE_RANGE
-    return numerator / (wlbt.Y_MAX - ROTATE_RANGE) * 90
+    return numerator / (wlbt.Y_MAX - ROTATE_RANGE) * MAX_SPEED
 
 def robotGestures():
     wlbt.verifyThatConnected()
