@@ -1,12 +1,9 @@
 from __future__ import print_function, division
 from imp import load_source
 from os.path import join
+from os import system
 from math import radians, sin, radians
 import paramiko
-
-HOST = '192.168.1.39'
-USERNAME = 'pi'
-PASSWORD = 'raspberry'
 
 MAX_SPEED = 480 # according to Pololu DRV883 documentation
 distance = lambda t: (t.xPosCm**2 + t.yPosCm**2 + t.zPosCm**2) ** 0.5
@@ -20,12 +17,30 @@ Y_MAX = R_MAX * sin(radians(PHI_MAX))
 ROTATE_RANGE = Y_MAX / 2
 DRIVE_RANGE = R_MAX * 7 / 8
 
-def connectToRaspPi():
-    ssh.load_system_host_keys()
-    ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
-    ssh.connect(HOST, username=USERNAME, password=PASSWORD)
-    return ssh
-raspPi = connectToRaspPi()
+class RaspberryPi():
+
+    def __init__(self):
+        self.HOST = '192.168.1.39'
+        self.USER = 'pi'
+        self.PSWRD = 'raspberry'
+
+    def connect(self):
+        self.ssh = paramiko.SSHClient()
+        self.ssh.load_system_host_keys()
+        self.ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
+        self.ssh.connect(self.HOST, username=self.USER, password=self.PSWRD)
+
+    def drive(self, speed):
+        command = 'sudo python -c "from pololu_drv8835_rpi import motors;'
+        command += 'motors.setSpeeds('+speed+', '+speed+')"'
+        self.ssh.exec_command(command)
+
+    def rotate(self, speed):
+        command = 'sudo python -c "from pololu_drv8835_rpi import motors;'
+        command += 'motors.setSpeeds('+speed+', '+(-speed)+')"'
+        self.ssh.exec_command(command)
+
+raspPi  = RaspberryPi()
 
 def initWalabotLibrary():
     wlbtPath = join('/usr', 'share', 'walabot', 'python')
@@ -93,6 +108,7 @@ def stopRobotAndDisconnectWalabot():
 def robotGestures():
     verifyWalabotIsConnected()
     setParametersAndStart()
+    raspPi.connect()
     try:
         while True:
             moveRobotAccordingToTarget(getClosestTarget())
