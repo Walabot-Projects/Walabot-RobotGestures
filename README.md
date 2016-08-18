@@ -1,6 +1,6 @@
 # RobotGestures - A Walabot Application
 
-This is a simple Walabot application that allows you control a [Pololu DRV8835 Dual Motor Driver Kit](https://www.pololu.com/product/2753) through Walabot gestures.
+A simple Walabot application that allows you control a [Pololu DRV8835 Dual Motor Driver Kit](https://www.pololu.com/product/2753) through Walabot gestures.
 
 * The code is written in Python and works on both Python 2 and Python 3.  
 * The app was tested on Windows 10 and Ubuntu 16.04.  
