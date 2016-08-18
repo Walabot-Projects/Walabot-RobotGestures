@@ -26,7 +26,7 @@ This is a simple Walabot application that allows you control a [Pololu DRV8835 D
 
 ### Positioning the Walabot
 
-![Positioning the Walabot](https://raw.githubusercontent.com/Walabot-Projects/Walabot-RobotGestures/master/example.png)
+![Positioning the Walabot](https://raw.githubusercontent.com/Walabot-Projects/Walabot-RobotGestures/master/example.jpg)
 
 ## Editing the code
 
