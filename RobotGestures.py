@@ -15,7 +15,7 @@ class Walabot:
         self.wlbt = load_source('WalabotAPI', join(wlbtPath, 'WalabotAPI.py'))
         self.wlbt.Init()
         self.wlbt.SetSettingsFolder()
-        self.R_MIN, self.R_MAX, self.R_RES = 5, 40, 1
+        self.R_MIN, self.R_MAX, self.R_RES = 5, 30, 1
         self.THETA_MIN, self.THETA_MAX, self.THETA_RES = -20, 20, 10
         self.PHI_MIN, self.PHI_MAX, self.PHI_RES = -30, 30, 1
         self.TSHLD = 40
@@ -24,7 +24,7 @@ class Walabot:
         self.DRIVE_RANGE = self.R_MAX * 7 / 8
         self.distance = lambda t: (t.xPosCm**2+t.yPosCm**2+t.zPosCm**2) ** 0.5
 
-    def verifyThatConnected(self):
+    def connect(self):
         """ Connect to a Walabot device. Prompt the user to connect one if
             it can't detect it.
         """
@@ -42,7 +42,7 @@ class Walabot:
         """ Set the Walabot required parameters according to the constants.
             Then start the Walabot.
         """
-        self.wlbt.SetProfile(self.wlbt.PROF_SENSOR)
+        self.wlbt.SetProfile(self.wlbt.PROF_SENSOR_NARROW)
         self.wlbt.SetArenaR(self.R_MIN, self.R_MAX, self.R_RES)
         self.wlbt.SetArenaTheta(self.THETA_MIN, self.THETA_MAX, self.THETA_RES)
         self.wlbt.SetArenaPhi(self.PHI_MIN, self.PHI_MAX, self.PHI_RES)
@@ -151,8 +151,8 @@ def rotationSpeed(y):
     return numerator / (wlbt.Y_MAX - wlbt.ROTATE_RANGE) * MAX_SPEED
 
 def robotGestures():
-    wlbt.verifyThatConnected() # init the Walabot
-    wlbt.setParametersAndStart() # init the Raspberry Pi
+    wlbt.connect()
+    wlbt.setParametersAndStart()
     raspPi.connect() # connect over SSH
     try:
         while True:
