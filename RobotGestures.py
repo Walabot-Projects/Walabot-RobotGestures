@@ -1,5 +1,7 @@
 from __future__ import print_function, division
 from math import radians, sin, pi
+try: input = raw_input # python2-python3 compatibillity
+except NameError: pass
 import WalabotAPI
 import paramiko
 
@@ -14,7 +16,7 @@ class Walabot:
         self.wlbt.Init()
         self.wlbt.SetSettingsFolder()
         self.R_MIN, self.R_MAX, self.R_RES = 5, 30, 1
-        self.THETA_MIN, self.THETA_MAX, self.THETA_RES = -20, 20, 10
+        self.THETA_MIN, self.THETA_MAX, self.THETA_RES = -0, 20, 10
         self.PHI_MIN, self.PHI_MAX, self.PHI_RES = -30, 30, 1
         self.TSHLD = 40
         self.Y_MAX = self.R_MAX * sin(radians(self.PHI_MAX))
@@ -76,8 +78,8 @@ class RaspberryPi:
         """ Set Raspberry Pi network information.
         """
         self.HOST = '192.168.1.39'
-        self.USER = 'pi'
-        self.PSWRD = 'raspberry'
+        self.USERNAME = 'pi'
+        self.PASSWORD = 'raspberry'
 
     def connect(self):
         """ Connect to the Raspberry Pi over SHH using paramiko.
@@ -85,7 +87,13 @@ class RaspberryPi:
         self.ssh = paramiko.SSHClient()
         self.ssh.load_system_host_keys()
         self.ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
-        self.ssh.connect(self.HOST, username=self.USER, password=self.PSWRD)
+        while True:
+            try:
+                self.ssh.connect(self.HOST, username=self.USERNAME,
+                    password=self.PASSWORD)
+                break
+            except paramiko.ssh_exception.NoValidConnectionsError as sshError:
+                input("- RaspPi connection failure. Press 'enter' to retry.")
         print('- Connection to RaspPi established.')
 
     def drive(self, speed):
@@ -155,12 +163,15 @@ def robotGestures():
     wlbt.connect()
     wlbt.setParametersAndStart()
     raspPi.connect() # connect over SSH
+    print('- Up and running! Start driving!')
+    print("- Press 'CTRL-C' to terminate the app.")
     try:
         while True:
             moveRobotAccordingToTarget(wlbt.getClosestTarget())
     finally: # make sure to stop the robot on any case.
         raspPi.stop()
         wlbt.stopAndDisconnect()
+        print('- Terminated successfully.')
 
 if __name__ == '__main__':
     robotGestures()
