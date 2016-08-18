@@ -1,7 +1,6 @@
 from __future__ import print_function, division
-from imp import load_source
-from os.path import join
 from math import radians, sin, pi
+import WalabotAPI
 import paramiko
 
 class Walabot:
@@ -11,8 +10,7 @@ class Walabot:
     def __init__(self):
         """ Set useful arena constants and load the Walabot SDK.
         """
-        wlbtPath = join('/usr', 'share', 'walabot', 'python')
-        self.wlbt = load_source('WalabotAPI', join(wlbtPath, 'WalabotAPI.py'))
+        self.wlbt = WalabotAPI
         self.wlbt.Init()
         self.wlbt.SetSettingsFolder()
         self.R_MIN, self.R_MAX, self.R_RES = 5, 30, 1
@@ -151,6 +149,9 @@ def rotationSpeed(y):
     return numerator / (wlbt.Y_MAX - wlbt.ROTATE_RANGE) * MAX_SPEED
 
 def robotGestures():
+    """ Main function. Initialize the Walabot device and the Raspberry PI,
+        and send commands to the Raspberry PI according to the Walabot input.
+    """
     wlbt.connect()
     wlbt.setParametersAndStart()
     raspPi.connect() # connect over SSH
