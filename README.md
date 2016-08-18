@@ -9,11 +9,11 @@ This is a simple Walabot application that allows you control a [Pololu DRV8835 D
 
 ### What does the Walabot Do?
 
-The app uses the Walabot sensor to detect a hand inside it's arena.  
-The Z axis is used to control the driving speed.  
-The Y axis is used to control the rotation speed.  
+* The app uses the Walabot sensor to detect a hand inside it's arena.
+* The Z axis is used to control the driving speed when the hand is positioned at the middle of the arena.
+* The Y axis is used to control the rotation speed when the hand is positioned at one of the arena sides.
 
-### How to use
+## How to use
 
 1. Install the [Walabot SDK](http://walabot.com/getting-started) and the [WalabotAPI Python library](http://api.walabot.com/_pythonapi.html) using pip.
 2. Install the [Paramiko library.](https://github.com/paramiko/paramiko/)
@@ -24,16 +24,16 @@ The Y axis is used to control the rotation speed.
 
 **IMPORTANT NOTE:** Current Walabot settings are for vMaker18.
 
-##### Positioning the Walabot
+### Positioning the Walabot
 
 ![Positioning the Walabot](https://raw.githubusercontent.com/Walabot-Projects/Walabot-RobotGestures/master/example.png)
 
-### Editing the code
+## Editing the code
 
 'Walabot Settings' variables are necessary to configure the Walabot arena.  
 'Raspberry PI Settings' variables are required to connect to the device over SSH.
 
-##### Walabot Settings - the `Walabot` class
+#### Walabot Settings - the `Walabot` class
 
 * `R_MIN, R_MAX, R_RES`: Walabot [`SetArenaR`](http://api.walabot.com/_walabot_a_p_i_8h.html#aac6cafa27c4a7d069dd64c903964632c) parameters. Determines how low (from it's location) the Walabot will "see".
 * `THETA_MIN, THETA_MAX, THETA_RES`:  Walabot [`SetArenaTheta`](http://api.walabot.com/_walabot_a_p_i_8h.html#a3832f1466248274faadd6c23127b998d) parameters. The theta axis is ignored in this app, those values should always be the "lowest" possible.
@@ -42,7 +42,7 @@ The Y axis is used to control the rotation speed.
 
 A comprehensive explanation about the Walabot imaging features can be found [here](http://api.walabot.com/_features.html).
 
-##### Raspberry PI Settings - the `RaspberryPi` class
+#### Raspberry PI Settings - the `RaspberryPi` class
 
 * `HOST`: The Raspberry PI ip.
 * `USERNAME`: The Raspberry PI OS username.
