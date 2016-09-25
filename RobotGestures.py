@@ -1,9 +1,12 @@
 from __future__ import print_function, division
-from math import radians, sin, pi
-try: input = raw_input # python2-python3 compatibillity
-except NameError: pass
+from math import radians, sin
 import WalabotAPI
 import paramiko
+try:
+    input = raw_input
+except NameError:
+    pass
+
 
 class Walabot:
     """ Designed to control the Walabot device.
@@ -32,7 +35,7 @@ class Walabot:
             try:
                 self.wlbt.ConnectAny()
             except self.wlbt.WalabotError as err:
-                if err.code == 19: # 'WALABOT_INSTRUMENT_NOT_FOUND'
+                if err.code == 19:  # 'WALABOT_INSTRUMENT_NOT_FOUND'
                     input("- Connect Walabot and press 'Enter'.")
             else:
                 print('- Connection to Walabot established.')
@@ -60,7 +63,7 @@ class Walabot:
         targets = self.wlbt.GetSensorTargets()
         try:
             return max(targets, key=self.distance)
-        except ValueError: # 'targets' is empty; no targets were found
+        except ValueError:  # 'targets' is empty; no targets were found
             return None
 
     def stopAndDisconnect(self):
@@ -69,6 +72,7 @@ class Walabot:
         self.wlbt.Stop()
         self.wlbt.Disconnect()
         print('- Walabot stopped and disconnected.')
+
 
 class RaspberryPi:
     """ Designed to control the Raspberry Pi.
@@ -89,8 +93,8 @@ class RaspberryPi:
         self.ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
         while True:
             try:
-                self.ssh.connect(self.HOST, username=self.USERNAME,
-                    password=self.PASSWORD)
+                self.ssh.connect(
+                    self.HOST, username=self.USERNAME, password=self.PASSWORD)
                 break
             except paramiko.ssh_exception.NoValidConnectionsError as sshError:
                 input("- RaspPi connection failure. Press 'enter' to retry.")
@@ -125,10 +129,12 @@ class RaspberryPi:
         command += 'motors.setSpeeds(0, 0)"'
         self.ssh.exec_command(command)
 
-wlbt = Walabot()
-raspPi  = RaspberryPi()
 
-MAX_SPEED = 480 # according to Pololu DRV883 documentation
+wlbt = Walabot()
+raspPi = RaspberryPi()
+
+MAX_SPEED = 480  # according to Pololu DRV883 documentation
+
 
 def moveRobotAccordingToTarget(target):
     """ Moves the robot according to the target location in the arena by a
@@ -142,19 +148,22 @@ def moveRobotAccordingToTarget(target):
     """
     if not target:
         raspPi.stop()
-    elif abs(target.yPosCm) > wlbt.ROTATE_RANGE: # hand is at 'rotate section'
+    elif abs(target.yPosCm) > wlbt.ROTATE_RANGE:  # hand is at 'rotate section'
         raspPi.rotate(rotationSpeed(target.yPosCm))
-    elif target.zPosCm < wlbt.DRIVE_RANGE: # hand is at 'drive section'
+    elif target.zPosCm < wlbt.DRIVE_RANGE:  # hand is at 'drive section'
         raspPi.drive(drivingSpeed(target.zPosCm))
-    else: # target is in the bottom-middle of arena
+    else:  # target is in the bottom-middle of arena
         raspPi.stop()
+
 
 def drivingSpeed(z):
     return (1 - z / wlbt.DRIVE_RANGE) * MAX_SPEED * 2
 
+
 def rotationSpeed(y):
     numerator = y - wlbt.ROTATE_RANGE if y > 0 else y + wlbt.ROTATE_RANGE
     return numerator / (wlbt.Y_MAX - wlbt.ROTATE_RANGE) * MAX_SPEED
+
 
 def robotGestures():
     """ Main function. Initialize the Walabot device and the Raspberry PI,
@@ -162,16 +171,17 @@ def robotGestures():
     """
     wlbt.connect()
     wlbt.setParametersAndStart()
-    raspPi.connect() # connect over SSH
+    raspPi.connect()  # connect over SSH
     print('- Up and running! Start driving!')
     print("- Press 'CTRL-C' to terminate the app.")
     try:
         while True:
             moveRobotAccordingToTarget(wlbt.getClosestTarget())
-    finally: # make sure to stop the robot on any case.
+    finally:  # make sure to stop the robot on any case.
         raspPi.stop()
         wlbt.stopAndDisconnect()
         print('- Terminated successfully.')
+
 
 if __name__ == '__main__':
     robotGestures()
