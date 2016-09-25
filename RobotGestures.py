@@ -45,7 +45,7 @@ class Walabot:
         """ Set the Walabot required parameters according to the constants.
             Then start the Walabot.
         """
-        self.wlbt.SetProfile(self.wlbt.PROF_SENSOR_NARROW)
+        self.wlbt.SetProfile(self.wlbt.PROF_SENSOR)
         self.wlbt.SetArenaR(self.R_MIN, self.R_MAX, self.R_RES)
         self.wlbt.SetArenaTheta(self.THETA_MIN, self.THETA_MAX, self.THETA_RES)
         self.wlbt.SetArenaPhi(self.PHI_MIN, self.PHI_MAX, self.PHI_RES)
