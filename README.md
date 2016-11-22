@@ -2,8 +2,8 @@
 
 A simple Walabot application that allows you control a [Pololu DRV8835 Dual Motor Driver Kit](https://www.pololu.com/product/2753) through Walabot gestures.
 
-* The code is written in Python and works on both Python 2 and Python 3.  
-* The app was tested on Windows 10 and Ubuntu 16.04.  
+* Works on both Windows and Linux.
+* Tested on Windows 10, Ubuntu 16.04 LTS and Raspberry Pi 3.
 * The app's using [Python library for the Pololu DRV8835 Dual Motor Driver Kit for Raspberry Pi.](https://github.com/pololu/drv8835-motor-driver-rpi)
 * Connection to the Raspberry PI is achieved using [Paramiko.](http://www.paramiko.org/)
 
@@ -15,14 +15,24 @@ A simple Walabot application that allows you control a [Pololu DRV8835 Dual Moto
 
 ## How to use
 
-1. Install the [Walabot SDK](http://walabot.com/getting-started) and the [WalabotAPI Python library](http://api.walabot.com/_pythonapi.html) using pip.
+1. Install the [Walabot SDK](http://walabot.com/getting-started) and the [WalabotAPI Python library](https://github.com/Walabot-Projects/Walabot-HelloWalabot#how-to-use) using pip.
 2. Install the [Paramiko library.](https://github.com/paramiko/paramiko/)
 3. Install the [Python library for the Pololu DRV8835 Dual Motor Driver Kit for Raspberry Pi.](https://github.com/pololu/drv8835-motor-driver-rpi)
-4. Configure the SSH settings in the code to match yours (lines 80-82 in `RobotGestures.py`).
-5. Position the Walabot as the image below.
-6. Run `RobotGestures.py` and start driving! :blue_car: :red_car: :taxi:
+4. Raspberry Pi only: Configure it to work with Walabot (explained below).
+5. Configure the SSH settings in the code to match yours (lines 80-82 in `RobotGestures.py`).
+6. Position the Walabot as the image below.
+7. Run `RobotGestures.py` and start driving! :blue_car: :red_car: :taxi:
 
-**IMPORTANT NOTE:** Current Walabot settings are for vMaker18.
+**IMPORTANT NOTE:** Current Walabot settings are for Walabot Pro.
+
+#### Configure the Raspberry Pi
+
+The Raspberry Pi is an excellent tool for makers, but it is limited in the current it can send to the Walabot.  
+Add the following lines to the end of the file at `/boot/config.txt` in order to configure it to work:
+```
+safe_mode_gpio=4
+max_usb_current=1
+```
 
 ### Positioning the Walabot
 
