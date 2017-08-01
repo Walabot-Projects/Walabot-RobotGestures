@@ -23,7 +23,7 @@ A simple Walabot application that allows you control a [Pololu DRV8835 Dual Moto
 6. Position the Walabot as the image below.
 7. Run `RobotGestures.py` and start driving! :blue_car: :red_car: :taxi:
 
-**IMPORTANT NOTE:** Current Walabot settings are for Walabot Pro.
+**IMPORTANT NOTE:** Current Walabot settings are for Walabot Developer (formerly Walabot Pro).
 
 #### Configure the Raspberry Pi
 
